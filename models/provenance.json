@@ -1,0 +1,14 @@
+{
+  "baseline_cnn.h5": {
+    "sha256": "81c4559038de63602f3656201d5008d04ae5a1928c5e025f081632c349e98de3",
+    "source_sha256": "811faab277206e7d4d48d4cc075fb2d4c0c9900b4ba1e4b551af8d0d4304ace4",
+    "weights_unchanged": true,
+    "bytes": 11124240
+  },
+  "improved_cnn.h5": {
+    "sha256": "3e6a32e2a1754c2c0c863ca5479d4b97a05f737b91221f09038184089f08a9dc",
+    "source_sha256": "3e6a32e2a1754c2c0c863ca5479d4b97a05f737b91221f09038184089f08a9dc",
+    "weights_unchanged": true,
+    "bytes": 11124240
+  }
+}

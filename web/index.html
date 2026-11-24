@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>웹 요청 분석</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/request.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>웹 요청 분석</h1>
+      <a href="/logs">로그 화면</a>
+    </header>
+    <form id="request">
+      <label for="input">요청에 보낼 값</label>
+      <input id="input" name="input" value="상품 목록" maxlength="8192" required>
+      <button type="submit">분석하기</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+</body>
+</html>
