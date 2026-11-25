@@ -14,10 +14,20 @@ from tune_threshold import select_threshold
 SEED = 42
 EPOCHS = 6
 BATCH_SIZE = 128
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.003
+OPTIMIZER = 'rmsprop'
+OPTIMIZERS = ('adam', 'rmsprop', 'sgd')
+SGD_MOMENTUM = 0.9
 
 
-def make_byte_cnn(learning_rate):
+def make_optimizer(name, learning_rate):
+    if name == 'sgd':
+        return keras.optimizers.SGD(learning_rate=learning_rate, momentum=SGD_MOMENTUM)
+    optimizers = {'adam': keras.optimizers.Adam, 'rmsprop': keras.optimizers.RMSprop}
+    return optimizers[name](learning_rate=learning_rate)
+
+
+def make_byte_cnn(learning_rate, optimizer=OPTIMIZER):
     inputs = keras.Input(shape=(None,), dtype='int32', name='utf8_byte_ids')
     x = keras.layers.Embedding(257, 12)(inputs)
     x = keras.layers.Conv1D(20, 5, padding='same', activation='relu')(x)
@@ -26,11 +36,11 @@ def make_byte_cnn(learning_rate):
     x = keras.layers.Dense(24, activation='relu')(x)
     outputs = keras.layers.Dense(1, activation='sigmoid')(x)
     model = keras.Model(inputs, outputs)
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate), loss='binary_crossentropy')
+    model.compile(optimizer=make_optimizer(optimizer, learning_rate), loss='binary_crossentropy')
     return model
 
 
-def fit(data_dir, output_dir, *, learning_rate=LEARNING_RATE, max_bytes=None):
+def fit(data_dir, output_dir, *, learning_rate=LEARNING_RATE, optimizer=OPTIMIZER, max_bytes=None):
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / MODEL_FILE
     selected = output_dir / SELECTION_FILE
@@ -44,7 +54,7 @@ def fit(data_dir, output_dir, *, learning_rate=LEARNING_RATE, max_bytes=None):
 
     keras.utils.set_random_seed(SEED)
     rng = np.random.default_rng(SEED)
-    model = make_byte_cnn(learning_rate)
+    model = make_byte_cnn(learning_rate, optimizer)
     history = []
     best_rank = None
     best_weights = None
@@ -95,6 +105,7 @@ def fit(data_dir, output_dir, *, learning_rate=LEARNING_RATE, max_bytes=None):
         'source_data_sha256': source_hashes,
         'threshold': threshold, 'checkpoint_threshold': THRESHOLD,
         'threshold_from': 'validation_mean_balanced_accuracy', 'seed': SEED, 'epoch_budget': EPOCHS,
+        'optimizer': optimizer, 'optimizer_config': model.optimizer.get_config(),
         'learning_rate': learning_rate, 'batch_size': BATCH_SIZE, 'max_bytes': max_bytes,
         'train_http_n': original_n, 'train_mendeley_n': len(external['train']),
         'mendeley_presentations_per_epoch': external_draws,
@@ -109,6 +120,7 @@ def main():
     parser = argparse.ArgumentParser(description='Train a byte CNN on the prepared splits.')
     parser.add_argument('--data-dir', type=Path, default=DEFAULT_DATA_DIR)
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--optimizer', choices=OPTIMIZERS, default=OPTIMIZER)
     parser.add_argument('--learning-rate', type=float, default=LEARNING_RATE)
     parser.add_argument('--max-bytes', type=int)
     args = parser.parse_args()
@@ -116,7 +128,8 @@ def main():
         parser.error('--learning-rate must be a positive finite number.')
     if args.max_bytes is not None and args.max_bytes < 1:
         parser.error('--max-bytes must be positive.')
-    fit(args.data_dir, args.output_dir, learning_rate=args.learning_rate, max_bytes=args.max_bytes)
+    fit(args.data_dir, args.output_dir, learning_rate=args.learning_rate,
+        optimizer=args.optimizer, max_bytes=args.max_bytes)
 
 
 if __name__ == '__main__':

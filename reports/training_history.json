@@ -1,38 +1,38 @@
 [
   {
     "epoch": 1,
-    "loss": 0.0012011746875941753,
+    "loss": 0.0011446301359683275,
     "validation": {
       "http": {
         "n": 5067,
-        "accuracy": 0.9976317347542925,
-        "f1": 0.9970530451866405,
-        "recall": 0.9941234084231146,
-        "specificity": 1.0,
-        "balanced_accuracy": 0.9970617042115573,
-        "tp": 2030,
-        "tn": 3025,
-        "fp": 0,
-        "fn": 12
+        "accuracy": 0.9994079336885732,
+        "f1": 0.999265605875153,
+        "recall": 0.9995102840352595,
+        "specificity": 0.9993388429752066,
+        "balanced_accuracy": 0.999424563505233,
+        "tp": 2041,
+        "tn": 3023,
+        "fp": 2,
+        "fn": 1
       },
       "mendeley": {
         "n": 400,
-        "accuracy": 0.97,
-        "f1": 0.9704433497536946,
-        "recall": 0.985,
-        "specificity": 0.955,
-        "balanced_accuracy": 0.97,
-        "tp": 197,
-        "tn": 191,
-        "fp": 9,
-        "fn": 3
+        "accuracy": 0.9775,
+        "f1": 0.9778869778869779,
+        "recall": 0.995,
+        "specificity": 0.96,
+        "balanced_accuracy": 0.9775,
+        "tp": 199,
+        "tn": 192,
+        "fp": 8,
+        "fn": 1
       }
     },
-    "selection_score": 0.9835308521057786
+    "selection_score": 0.9884622817526165
   },
   {
     "epoch": 2,
-    "loss": 0.0011321244528517127,
+    "loss": 0.00020006422710139304,
     "validation": {
       "http": {
         "n": 5067,
@@ -48,34 +48,34 @@
       },
       "mendeley": {
         "n": 400,
-        "accuracy": 0.9875,
-        "f1": 0.9875930521091811,
-        "recall": 0.995,
+        "accuracy": 0.985,
+        "f1": 0.9850746268656716,
+        "recall": 0.99,
         "specificity": 0.98,
-        "balanced_accuracy": 0.9875,
-        "tp": 199,
+        "balanced_accuracy": 0.985,
+        "tp": 198,
         "tn": 196,
         "fp": 4,
-        "fn": 1
+        "fn": 2
       }
     },
-    "selection_score": 0.9936275710088149
+    "selection_score": 0.992377571008815
   },
   {
     "epoch": 3,
-    "loss": 0.00013271975331008434,
+    "loss": 0.0002828673750627786,
     "validation": {
       "http": {
         "n": 5067,
-        "accuracy": 0.9998026445628577,
-        "f1": 0.9997550820475141,
-        "recall": 0.9995102840352595,
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "recall": 1.0,
         "specificity": 1.0,
-        "balanced_accuracy": 0.9997551420176298,
-        "tp": 2041,
+        "balanced_accuracy": 1.0,
+        "tp": 2042,
         "tn": 3025,
         "fp": 0,
-        "fn": 1
+        "fn": 0
       },
       "mendeley": {
         "n": 400,
@@ -90,23 +90,23 @@
         "fn": 1
       }
     },
-    "selection_score": 0.9936275710088149
+    "selection_score": 0.99375
   },
   {
     "epoch": 4,
-    "loss": 0.0001088154676835984,
+    "loss": 1.708309537207242e-05,
     "validation": {
       "http": {
         "n": 5067,
-        "accuracy": 0.9998026445628577,
-        "f1": 0.9997550820475141,
-        "recall": 0.9995102840352595,
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "recall": 1.0,
         "specificity": 1.0,
-        "balanced_accuracy": 0.9997551420176298,
-        "tp": 2041,
+        "balanced_accuracy": 1.0,
+        "tp": 2042,
         "tn": 3025,
         "fp": 0,
-        "fn": 1
+        "fn": 0
       },
       "mendeley": {
         "n": 400,
@@ -121,54 +121,54 @@
         "fn": 1
       }
     },
-    "selection_score": 0.9936275710088149
+    "selection_score": 0.99375
   },
   {
     "epoch": 5,
-    "loss": 0.00027531496016308665,
+    "loss": 0.00017858533828984946,
     "validation": {
       "http": {
         "n": 5067,
-        "accuracy": 0.9998026445628577,
-        "f1": 0.9997550820475141,
-        "recall": 0.9995102840352595,
-        "specificity": 1.0,
-        "balanced_accuracy": 0.9997551420176298,
-        "tp": 2041,
-        "tn": 3025,
-        "fp": 0,
-        "fn": 1
+        "accuracy": 0.9996052891257154,
+        "f1": 0.9995105237395986,
+        "recall": 1.0,
+        "specificity": 0.9993388429752066,
+        "balanced_accuracy": 0.9996694214876033,
+        "tp": 2042,
+        "tn": 3023,
+        "fp": 2,
+        "fn": 0
       },
       "mendeley": {
         "n": 400,
-        "accuracy": 0.9875,
-        "f1": 0.9875930521091811,
+        "accuracy": 0.9825,
+        "f1": 0.9827160493827161,
         "recall": 0.995,
-        "specificity": 0.98,
-        "balanced_accuracy": 0.9875,
+        "specificity": 0.97,
+        "balanced_accuracy": 0.9824999999999999,
         "tp": 199,
-        "tn": 196,
-        "fp": 4,
+        "tn": 194,
+        "fp": 6,
         "fn": 1
       }
     },
-    "selection_score": 0.9936275710088149
+    "selection_score": 0.9910847107438017
   },
   {
     "epoch": 6,
-    "loss": 0.000229393903282471,
+    "loss": 2.3795423658157233e-06,
     "validation": {
       "http": {
         "n": 5067,
-        "accuracy": 0.9998026445628577,
-        "f1": 0.9997550820475141,
-        "recall": 0.9995102840352595,
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "recall": 1.0,
         "specificity": 1.0,
-        "balanced_accuracy": 0.9997551420176298,
-        "tp": 2041,
+        "balanced_accuracy": 1.0,
+        "tp": 2042,
         "tn": 3025,
         "fp": 0,
-        "fn": 1
+        "fn": 0
       },
       "mendeley": {
         "n": 400,
@@ -183,6 +183,6 @@
         "fn": 1
       }
     },
-    "selection_score": 0.9936275710088149
+    "selection_score": 0.99375
   }
 ]
