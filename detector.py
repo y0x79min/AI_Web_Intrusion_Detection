@@ -4,67 +4,46 @@ from pathlib import Path
 
 import numpy as np
 from tensorflow import keras
-from sklearn.feature_extraction.text import CountVectorizer
 
 ROOT = Path(__file__).resolve().parent
-MODELS = ROOT / 'models'
-INPUT_SHAPE = (64, 64, 1)
-MODELS_BY_NAME = {
-    'baseline': MODELS / 'baseline_cnn.h5',
-    'improved': MODELS / 'improved_cnn.h5',
-}
-REPLACEMENTS = (
-    ('\n', ''), ('%20', ' '), ('=', ' = '), ('((', ' (( '), ('))', ' )) '),
-    ('(', ' ( '), (')', ' ) '), ('1 ', 'numeric'), (' 1', 'numeric'),
-    ("'1 ", "'numeric "), (" 1'", " numeric'"), ('1,', 'numeric,'),
-    (' 2 ', ' numeric '), (' 3 ', ' numeric '), (' 3--', ' numeric--'),
-    (' 4 ', ' numeric '), (' 5 ', ' numeric '), (' 6 ', ' numeric '),
-    (' 7 ', ' numeric '), (' 8 ', ' numeric '), ('1234', ' numeric '),
-    ('22', ' numeric '), (' 8 ', ' numeric '), (' 200 ', ' numeric '),
-    ('23 ', ' numeric '), ('"1', '"numeric'), ('1"', '"numeric'),
-    ('7659', 'numeric'), (' 37 ', ' numeric '), (' 45 ', ' numeric '),
-)
+MODEL_DIR = ROOT / 'models'
+MODEL_FILE = 'byte_cnn.h5'
+SELECTION_FILE = 'byte_selection.json'
+THRESHOLD = 0.5
+BYTE_PADDING = 12
 
 
-def clean_text(text):
-    for source, target in REPLACEMENTS:
-        text = text.replace(source, target)
-    return text
+def digest(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-class Encoder:
-    def __init__(self, spec_path=MODELS / 'count_vectorizer.json'):
-        spec = json.loads(Path(spec_path).read_text(encoding='utf-8'))
-        options = spec['options']
-        options['ngram_range'] = tuple(options['ngram_range'])
-        self.analyze = CountVectorizer(**options).build_analyzer()
-        self.positions = spec['token_sha256_to_index']
-        self.width = int(np.prod(INPUT_SHAPE))
-        if sorted(self.positions.values()) != list(range(self.width)):
-            raise ValueError('The vocabulary does not match the CNN input dimensions.')
-
-    def transform(self, texts):
-        values = np.zeros((len(texts), self.width), dtype=np.float32)
-        for row, text in zip(values, texts, strict=True):
-            for token in self.analyze(clean_text(text)):
-                digest = hashlib.sha256(token.encode('utf-8')).hexdigest()
-                position = self.positions.get(digest)
-                if position is not None:
-                    row[position] += 1
-        return values.reshape(-1, *INPUT_SHAPE)
+def encode_bytes(texts, max_bytes=None):
+    raw = [text.encode('utf-8')[:max_bytes] for text in texts]
+    values = np.zeros((len(raw), max(map(len, raw), default=0) + BYTE_PADDING), dtype=np.int32)
+    for index, text in enumerate(raw):
+        values[index, :len(text)] = np.frombuffer(text, dtype=np.uint8).astype(np.int32) + 1
+    return values
 
 
-def load_model(path):
-    model = keras.models.load_model(path, compile=False)
-    if tuple(model.input_shape[1:]) != INPUT_SHAPE or model.output_shape[-1] != 1:
-        raise ValueError('Unexpected model input or output dimensions.')
-    return model
-
-
-def score(model, encoder, texts, batch_size=128):
+def byte_scores(model, texts, batch_size=128, *, max_bytes=None):
     if not texts:
         return np.empty(0, dtype=np.float32)
     return np.concatenate([
-        model(encoder.transform(texts[start:start + batch_size]), training=False).numpy().ravel()
-        for start in range(0, len(texts), batch_size)
+        model(encode_bytes(texts[i:i + batch_size], max_bytes), training=False).numpy().ravel()
+        for i in range(0, len(texts), batch_size)
     ])
+
+
+def read_selection(directory=MODEL_DIR):
+    return json.loads((directory / SELECTION_FILE).read_text(encoding='utf-8'))
+
+
+def load_byte_model(directory=MODEL_DIR):
+    protocol = read_selection(directory)
+    if protocol['model'] != MODEL_FILE or protocol['threshold'] != THRESHOLD:
+        raise ValueError('The saved model settings do not match the detector.')
+    path = directory / MODEL_FILE
+    if digest(path) != protocol['model_sha256']:
+        raise ValueError('The byte CNN checkpoint does not match the evaluated file.')
+    return keras.models.load_model(path, compile=False)

@@ -1,4 +1,3 @@
-import os
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
@@ -6,7 +5,7 @@ import sqlite3
 
 from flask import Flask, abort, jsonify, request, send_from_directory
 
-from detector import Encoder, MODELS_BY_NAME, ROOT, load_model, score
+from detector import ROOT, byte_scores, load_byte_model
 
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS request_log (
@@ -15,7 +14,7 @@ CREATE TABLE IF NOT EXISTS request_log (
 '''
 
 
-def create_app(model_name='improved', database=None, scorer=None):
+def create_app(database=None, scorer=None):
     app = Flask(__name__, static_folder=str(ROOT / 'web'), static_url_path='/static')
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024
     app.config['TRUSTED_HOSTS'] = ['127.0.0.1', 'localhost']
@@ -32,8 +31,10 @@ def create_app(model_name='improved', database=None, scorer=None):
         connection.commit()
 
     if scorer is None:
-        model, encoder = load_model(MODELS_BY_NAME[model_name]), Encoder()
-        scorer = lambda text: float(score(model, encoder, [text])[0])
+        model = load_byte_model()
+
+        def scorer(text):
+            return float(byte_scores(model, [text])[0])
 
     def read_input():
         if not request.is_json:
@@ -91,6 +92,6 @@ def create_app(model_name='improved', database=None, scorer=None):
 
 
 if __name__ == '__main__':
-    create_app(model_name=os.environ.get('SQL_DETECTOR_MODEL', 'improved')).run(
+    create_app().run(
         host='127.0.0.1', port=8000, debug=False,
     )

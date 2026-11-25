@@ -1,0 +1,49 @@
+{
+  "epoch": 2,
+  "loss": 0.0011321244528517127,
+  "validation": {
+    "http": {
+      "n": 5067,
+      "accuracy": 0.9998026445628577,
+      "f1": 0.9997550820475141,
+      "recall": 0.9995102840352595,
+      "specificity": 1.0,
+      "balanced_accuracy": 0.9997551420176298,
+      "tp": 2041,
+      "tn": 3025,
+      "fp": 0,
+      "fn": 1
+    },
+    "mendeley": {
+      "n": 400,
+      "accuracy": 0.9875,
+      "f1": 0.9875930521091811,
+      "recall": 0.995,
+      "specificity": 0.98,
+      "balanced_accuracy": 0.9875,
+      "tp": 199,
+      "tn": 196,
+      "fp": 4,
+      "fn": 1
+    }
+  },
+  "selection_score": 0.9936275710088149,
+  "frozen_utc": "2026-11-25T13:03:41.503846+00:00",
+  "model": "byte_cnn.h5",
+  "model_sha256": "0a28a5640db4d5984de967601a238a60119ec8875279533bd1aa6d4c1967ca21",
+  "source_data_sha256": {
+    "HttpParamsDataset.csv": "c7f19e88baf2bf49a8ae6e7c86eabf369b9e05d3cb007d237824b31822320654",
+    "Mendeley_SQLi.csv": "6e69a70a6fcd351d3d77db8f3901e39e2cffffbed2b02de817652564310ac848",
+    "외부_분할.csv": "0ffd019b0ed0294815fb7ed3660a12e07002d901873c61f2b47d0335da3c0a63"
+  },
+  "threshold": 0.5,
+  "seed": 42,
+  "epoch_budget": 6,
+  "learning_rate": 0.001,
+  "batch_size": 128,
+  "train_http_n": 15168,
+  "train_mendeley_n": 1200,
+  "mendeley_presentations_per_epoch": 3792,
+  "selection": "Mean validation balanced accuracy; ties prefer higher minimum recall, then the earlier epoch.",
+  "max_bytes": null
+}

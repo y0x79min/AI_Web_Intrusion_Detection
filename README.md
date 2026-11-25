@@ -1,31 +1,21 @@
 # AI 기반 웹 침입 탐지·로그 분석
 
-웹 요청에 위험 점수를 매기고, 관리 화면에서 의심 로그의 입력 원문까지 볼 수 있게 만든 학부 프로젝트입니다. 저는 CNN 모델 구조와 학습 코드를 맡았고, Flask 탐지 API와 MySQL 로그 조회를 JavaScript 화면에 연결했습니다.
+웹 요청에 공격 점수를 매기고, 관리 화면에서 의심 로그의 입력 원문을 조회하는 프로젝트입니다. 저는 학부 과제에서 CNN 모델 구조와 학습 코드를 맡았고, Flask 분석 API와 MySQL 로그 조회를 JavaScript 화면에 연결했습니다.
 
-## 요청이 들어오면
+## SQL 인젝션 탐지
 
-입력 문자열을 정리하고 CountVectorizer의 단어 순서대로 횟수를 셉니다. 값 4,096개를 `64×64×1` 배열로 바꾸면 CNN이 SQL 인젝션 점수를 냅니다. 관리 화면에서는 소수 둘째 자리까지 표시한 점수가 0.6을 넘는 요청을 위험 목록에 넣었습니다. 목록에서 로그 번호를 선택하면 요청에 들어온 값을 확인할 수 있습니다.
+요청 문자열을 UTF-8 바이트 배열로 바꿔 문자와 기호의 순서를 보존합니다. 각 바이트 번호에 1을 더하고, 배치 안에서 길이가 짧은 입력은 뒤에 0을 채웁니다. 임베딩을 거쳐 1차원 합성곱 두 층이 가까운 바이트의 패턴을 찾습니다. 전역 최대 풀링과 분류층을 거쳐 공격 점수 하나를 냅니다. 공개 데이터 평가에서는 점수 0.5 이상을 공격으로 판정했습니다.
 
-1차 모델은 사전에 있는 단어가 하나도 없는 입력을 받을 때 정상 요청까지 공격으로 보는 일이 많았습니다. 입력 배열이 모두 0일 때 나온 0.5838점이 모델 비교 기준인 0.5를 넘었기 때문입니다. 2차 모델 비교에서는 CountVectorizer와 CNN 특징 추출부를 유지하고, 정상·공격 예시를 보강해 Dense 분류층을 더 학습했습니다.
-
-같은 HttpParamsDataset 평가 5,084건에 저장 모델을 적용했습니다.
-
-| 모델 | 정확도 | F1 | 정상 오탐 | 공격 미탐 |
+| 분할 | 건수 | 정확도 | 정상 오탐 | 공격 미탐 |
 | --- | ---: | ---: | ---: | ---: |
-| 1차 CNN | 41.60% | 54.65% | 2,724건 | 245건 |
-| 2차 CNN | 94.75% | 93.02% | 12건 | 255건 |
+| HttpParamsDataset 학습 | 15,168 | 99.97% | 1 | 3 |
+| HttpParamsDataset 검증 | 5,067 | 99.98% | 0 | 1 |
+| HttpParamsDataset 평가 | 5,084 | 100.00% | 0 | 0 |
+| Mendeley 외부 평가 | 400 | 99.25% | 1 | 2 |
 
-## 코드
+![바이트 CNN 정확도와 전체 데이터 구성](reports/accuracy.png)
 
-| 파일 | 내용 |
-| --- | --- |
-| [detector.py](detector.py) | 문자열 전처리, CountVectorizer 입력 배열, CNN 점수 계산 |
-| [models](models/) | 1차·2차 가중치와 벡터 변환 정보 |
-| [prepare_http.py](prepare_http.py) · [train_head.py](train_head.py) · [evaluate.py](evaluate.py) | 공개 데이터 분할, Dense 분류층 추가 학습, 평가 |
-| [web](web/) | 요청 입력 화면과 위험 로그 조회 화면 |
-| [app.py](app.py) | Flask 탐지 API, 로그 저장과 조회 |
-
-학부 프로젝트의 웹 코드는 PHP, 로그 저장은 MySQL을 사용했습니다. 이 저장소에서 흐름을 확인할 때는 같은 화면·API 역할을 로컬 Flask와 SQLite로 구성했습니다. 모델 파일은 보관한 CNN의 학습용 옵티마이저 상태를 덜어낸 추론 파일입니다. 벡터라이저의 토큰 항목은 단어의 해시와 배열 위치로 저장했습니다.
+HttpParamsDataset은 비슷한 요청을 템플릿 단위로 묶고, 정상 약 60%와 공격 약 40%의 비율이 각 분할에 가깝게 유지되도록 나눴습니다. Mendeley는 학습·검증·평가 분할마다 정상과 공격을 50%씩 사용했습니다. 위 학습 행은 저장 모델을 학습 분할에 다시 적용한 값입니다.
 
 ## 화면 열기
 
@@ -36,17 +26,44 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-브라우저에서 `http://127.0.0.1:8000`을 열고 예제 값을 보내면 됩니다. 로그 화면에서 의심 요청과 원문을 확인할 수 있습니다. 모델은 기본으로 2차를 사용합니다. 1차를 보려면 환경 변수 `SQL_DETECTOR_MODEL`을 `baseline`으로 설정합니다. 예제 요청은 로컬 `instance/demo.sqlite3`에 저장됩니다.
+브라우저에서 `http://127.0.0.1:8000`을 열고 요청 값을 입력합니다. 점수는 `/ai`에서 확인할 수 있고, 화면에서 제출한 요청은 로컬 SQLite에 저장됩니다. 로그 화면은 소수 둘째 자리까지 표시한 점수가 0.6을 넘으면 위험 목록에 올리고, 로그를 선택하면 입력 원문을 보여줍니다. 학부 시연은 PHP와 MySQL을 사용했고, 이 저장소의 로컬 데모는 Flask와 SQLite로 동작합니다.
 
-## 공개 데이터로 분류층 학습하기
+## 학습과 평가
 
-[HttpParamsDataset](https://github.com/Morzeux/HttpParamsDataset)의 CSV를 `data/source.csv`로 둡니다. 라벨은 정상 0, SQL 인젝션 1입니다. 비슷한 형식의 요청이 학습과 평가에 나뉘어 들어가는 일을 줄이기 위해 템플릿 단위로 분할합니다.
+[HttpParamsDataset](https://github.com/Morzeux/HttpParamsDataset)과 [Mendeley Normal & Malicious SQLi](https://data.mendeley.com/datasets/sx84kj3xfz/1)를 사용했습니다. 저장 모델의 성능을 같은 조건에서 재현하려면 아래 분할 CSV 세 개가 필요합니다. 파일 해시는 [모델 선택 기록](models/byte_selection.json)에 있습니다.
+
+| 파일 | 필요한 열 |
+| --- | --- |
+| `HttpParamsDataset.csv` | `text`, `label`, `group`, `split` |
+| `Mendeley_SQLi.csv` | `id`, `text`, `label`, `group` |
+| `외부_분할.csv` | `id`, `split` |
+
+`label`의 0은 정상, 1은 공격입니다. HttpParamsDataset의 분할 값은 `train`, `validation`, `test`이고, Mendeley는 `train`, `validation`, `holdout`입니다. 분할 CSV는 별도로 준비합니다. [prepare_http.py](prepare_http.py)는 HttpParamsDataset 원본 CSV에서 개별 평가용 CSV를 만드는 데 쓸 수 있습니다.
 
 ```bash
-python prepare_http.py data/source.csv data/splits
-python train_head.py --train data/splits/train.csv --validation data/splits/validation.csv --output runs/extra_head.h5
-python evaluate.py data/splits/test.csv --model baseline
-python evaluate.py data/splits/test.csv --model improved
+python train.py --data-dir data --output-dir runs/byte_cnn
+python evaluate.py --data-dir data
+python evaluate.py --data-dir data --artifact-dir runs/byte_cnn
 ```
 
-학습 코드는 보관한 1차 CNN에서 Dense 분류층을 이어 학습하는 공개 데이터 예제입니다. 새로 학습한 모델은 평가할 때 `--model-file runs/extra_head.h5`로 지정합니다. 위 성능 표는 저장소에 포함된 1차·2차 모델을 기존 공개 평가 분할에서 비교한 값입니다.
+Adam 학습률 0.001, 배치 크기 128로 6회 학습하고, 두 검증 분할의 평균 균형 정확도로 2회차 가중치를 선택했습니다. [학습 기록](reports/training_history.json)과 [평가 결과](reports/evaluation.json)에 수치가 있습니다.
+
+### 입력 길이와 학습률 비교
+
+입력은 앞 128바이트, 앞 256바이트, 원문 전체 세 가지로 두고, Adam 학습률 0.0003, 0.001, 0.003을 비교했습니다. 각 조합의 가중치는 검증에서 선택하고, 외부 평가에는 같은 Mendeley 홀드아웃 400건을 썼습니다.
+
+![입력 길이와 학습률 조합 9개의 외부 평가](reports/input_settings.png)
+
+원문 전체와 학습률 0.003을 쓴 조합이 99.50%였습니다. 기준 모델인 원문 전체와 0.001 조합은 99.25%였고, 두 결과는 400건 중 한 건 차이입니다.
+
+```bash
+python compare.py --data-dir data --output-dir runs/input_settings
+```
+
+## 파일 구성
+
+| 파일 | 내용 |
+| --- | --- |
+| [detector.py](detector.py) · [models](models/) | 바이트 입력 변환, 추론, 저장 모델 |
+| [train.py](train.py) · [evaluate.py](evaluate.py) · [compare.py](compare.py) | 학습, 검증, 공개 표본 평가와 설정 비교 |
+| [app.py](app.py) · [web](web/) | 로컬 웹 데모와 로그 저장·조회 |
