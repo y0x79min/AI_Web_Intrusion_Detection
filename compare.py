@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 from dataset import DEFAULT_DATA_DIR, data_files, dataset, load_partitions
-from detector import MODEL_DIR, ROOT, THRESHOLD, byte_scores, digest, load_byte_model, read_selection
+from detector import MODEL_DIR, ROOT, byte_scores, digest, load_byte_model, read_selection
 from evaluate import measure, save_json
 
 LIMITS = (128, 256, None)
@@ -43,6 +43,7 @@ def compare(data_dir, output_dir, jobs):
     hashes = {path.name: digest(path) for path in data_files(data_dir)}
     _, external = load_partitions(data_dir)
     texts, labels = dataset(external['holdout'])
+    threshold = read_selection(MODEL_DIR)['threshold']
     results = []
     for limit, rate in combinations:
         baseline = (limit, rate) == BASELINE
@@ -53,13 +54,13 @@ def compare(data_dir, output_dir, jobs):
                 selection['batch_size'] != 128 or selection['seed'] != 42):
             raise ValueError(f'Comparison settings differ: {directory}')
         model = load_byte_model(directory)
-        metrics = measure(labels, byte_scores(model, texts, max_bytes=limit))
+        metrics = measure(labels, byte_scores(model, texts, max_bytes=limit), threshold)
         results.append({'max_bytes': limit, 'learning_rate': rate, 'baseline': baseline,
                         'epoch': selection['epoch'], 'model_sha256': selection['model_sha256'], **metrics})
         print(f'{case_name(limit, rate)}: {metrics["accuracy"]:.2%}, '
               f'FP={metrics["fp"]}, FN={metrics["fn"]}', flush=True)
     save_json(output_dir / 'comparison.json', {
-        'threshold': THRESHOLD, 'results': results, 'source_data_sha256': hashes,
+        'threshold': threshold, 'results': results, 'source_data_sha256': hashes,
     })
 
 

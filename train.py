@@ -9,6 +9,7 @@ from tensorflow import keras
 from dataset import DEFAULT_DATA_DIR, data_files, dataset, load_partitions
 from detector import MODEL_FILE, SELECTION_FILE, THRESHOLD, byte_scores, digest, encode_bytes
 from evaluate import measure, save_json
+from tune_threshold import select_threshold
 
 SEED = 42
 EPOCHS = 6
@@ -81,12 +82,19 @@ def fit(data_dir, output_dir, *, learning_rate=LEARNING_RATE, max_bytes=None):
     texts = validation['http'][0][:32]
     np.testing.assert_allclose(byte_scores(model, texts, max_bytes=max_bytes),
                                byte_scores(reload, texts, max_bytes=max_bytes), atol=1e-7)
+    threshold_report = select_threshold({
+        name: list(zip(map(float, byte_scores(reload, texts, max_bytes=max_bytes)), map(int, labels), strict=True))
+        for name, (texts, labels) in validation.items()
+    })
+    threshold = threshold_report['selected']['threshold']
+    save_json(output_dir / 'threshold_selection.json', threshold_report)
     save_json(output_dir / 'byte_history.json', history)
     save_json(selected, {
         **best_record, 'frozen_utc': datetime.now(timezone.utc).isoformat(),
         'model': path.name, 'model_sha256': digest(path),
         'source_data_sha256': source_hashes,
-        'threshold': THRESHOLD, 'seed': SEED, 'epoch_budget': EPOCHS,
+        'threshold': threshold, 'checkpoint_threshold': THRESHOLD,
+        'threshold_from': 'validation_mean_balanced_accuracy', 'seed': SEED, 'epoch_budget': EPOCHS,
         'learning_rate': learning_rate, 'batch_size': BATCH_SIZE, 'max_bytes': max_bytes,
         'train_http_n': original_n, 'train_mendeley_n': len(external['train']),
         'mendeley_presentations_per_epoch': external_draws,

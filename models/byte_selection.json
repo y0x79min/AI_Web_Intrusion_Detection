@@ -45,5 +45,7 @@
   "train_mendeley_n": 1200,
   "mendeley_presentations_per_epoch": 3792,
   "selection": "Mean validation balanced accuracy; ties prefer higher minimum recall, then the earlier epoch.",
-  "max_bytes": null
+  "max_bytes": null,
+  "checkpoint_threshold": 0.5,
+  "threshold_from": "validation_mean_balanced_accuracy"
 }

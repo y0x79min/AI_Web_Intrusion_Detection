@@ -41,7 +41,8 @@ def read_selection(directory=MODEL_DIR):
 
 def load_byte_model(directory=MODEL_DIR):
     protocol = read_selection(directory)
-    if protocol['model'] != MODEL_FILE or protocol['threshold'] != THRESHOLD:
+    threshold = protocol.get('threshold')
+    if protocol['model'] != MODEL_FILE or type(threshold) not in (int, float) or not 0 <= threshold <= 1:
         raise ValueError('The saved model settings do not match the detector.')
     path = directory / MODEL_FILE
     if digest(path) != protocol['model_sha256']:

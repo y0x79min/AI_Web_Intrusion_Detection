@@ -5,7 +5,7 @@ import sqlite3
 
 from flask import Flask, abort, jsonify, request, send_from_directory
 
-from detector import ROOT, byte_scores, load_byte_model
+from detector import ROOT, byte_scores, load_byte_model, read_selection
 
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS request_log (
@@ -30,6 +30,7 @@ def create_app(database=None, scorer=None):
         connection.execute(SCHEMA)
         connection.commit()
 
+    threshold = read_selection()['threshold']
     if scorer is None:
         model = load_byte_model()
 
@@ -68,7 +69,7 @@ def create_app(database=None, scorer=None):
                 (timestamp, text, value),
             )
             connection.commit()
-        return jsonify(id=row.lastrowid, score=value, flagged=round(value, 2) > 0.6), 201
+        return jsonify(id=row.lastrowid, score=value, flagged=value >= threshold), 201
 
     @app.get('/data')
     def list_logs():
@@ -76,7 +77,7 @@ def create_app(database=None, scorer=None):
             rows = connection.execute(
                 'SELECT id, at, score FROM request_log ORDER BY id DESC LIMIT 100'
             ).fetchall()
-        return jsonify([dict(row) | {'flagged': round(row['score'], 2) > 0.6} for row in rows])
+        return jsonify([dict(row) | {'flagged': row['score'] >= threshold} for row in rows])
 
     @app.get('/data/<int:log_id>')
     def get_log(log_id):
