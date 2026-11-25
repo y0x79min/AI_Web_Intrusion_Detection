@@ -66,7 +66,7 @@ python evaluate.py --data-dir data --scores-dir runs/scores
 
 ![입력 길이와 학습률 조합 9개의 외부 평가](reports/input_settings.png)
 
-원문 전체와 학습률 0.003을 쓴 조합이 99.50%였습니다. 기준 모델인 원문 전체와 0.001 조합은 99.25%였고, 두 결과는 400건 중 한 건 차이입니다.
+원문 전체에서 학습률 0.003은 99.50%, 0.001은 99.25%였습니다. 검증에서는 두 조합의 평균 균형 정확도가 모두 99.36%였으며, 외부 평가에서는 400건 중 한 건 차이였습니다.
 
 ```bash
 python compare.py --data-dir data --output-dir runs/input_settings
