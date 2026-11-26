@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 
-def read_split(path):
+def labeled_rows(path):
     with Path(path).open(encoding='utf-8-sig', newline='') as stream:
         reader = csv.DictReader(stream)
         if not {'text', 'label'}.issubset(reader.fieldnames or []):
@@ -17,14 +17,21 @@ def read_split(path):
         raise ValueError(f'{path}: both labels 0 and 1 must be present.')
     if any(not text.strip() or len(text) > 8192 for text in texts):
         raise ValueError(f'{path}: text must contain 1–8,192 characters.')
-    return texts, np.asarray(labels, dtype=np.int8)
+    return rows
+
+
+def read_split(path):
+    return dataset(labeled_rows(path))
 
 
 
 DEFAULT_DATA_DIR = Path(__file__).resolve().parent / 'data'
-HTTP_DATASET = 'HttpParamsDataset.csv'
-EXTERNAL_DATASET = 'Mendeley_SQLi.csv'
-EXTERNAL_SPLITS = '외부_분할.csv'
+SOURCE_NAMES = ('HttpParamsDataset.csv', 'Mendeley_SQLi.csv', '외부_분할.csv')
+EXTERNAL_EVALUATION = 'WAMM_v2_evaluation.csv'
+
+
+def data_files(data_dir):
+    return tuple(data_dir / name for name in SOURCE_NAMES)
 
 
 def records(path):
@@ -32,29 +39,23 @@ def records(path):
         return list(csv.DictReader(stream))
 
 
-def separate_groups(partitions):
-    seen = set()
-    for rows in partitions:
-        groups = {row['group'] for row in rows}
-        if seen & groups:
-            raise ValueError('Template groups overlap between data splits.')
-        seen.update(groups)
-
-
-def load_internal_partitions(data_dir):
+def load_partitions(data_dir):
+    http, mendeley, split = data_files(data_dir)
     internal = defaultdict(list)
-    for row in records(data_dir / HTTP_DATASET):
+    for row in records(http):
         internal[row['split']].append(row)
-    separate_groups(internal.values())
-    return internal
-
-
-def load_external_holdout(data_dir):
-    ids = {row['id'] for row in records(data_dir / EXTERNAL_SPLITS) if row['split'] == 'holdout'}
-    rows = [row for row in records(data_dir / EXTERNAL_DATASET) if row['id'] in ids]
-    if not ids or len(rows) != len(ids) or {row['id'] for row in rows} != ids:
-        raise ValueError('The external evaluation IDs do not match the dataset.')
-    return rows
+    supplemental = defaultdict(list)
+    split_by_id = {row['id']: row['split'] for row in records(split)}
+    for row in records(mendeley):
+        supplemental[split_by_id[row['id']]].append(row)
+    for partitions in (internal, supplemental):
+        seen = set()
+        for rows in partitions.values():
+            groups = {row['group'] for row in rows}
+            if seen & groups:
+                raise ValueError('Template groups overlap between data splits.')
+            seen.update(groups)
+    return internal, supplemental
 
 
 def dataset(rows):
