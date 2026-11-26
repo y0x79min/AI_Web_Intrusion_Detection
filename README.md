@@ -8,14 +8,14 @@
 
 | 분할 | 건수 | 정확도 | 정상 오탐 | 공격 미탐 |
 | --- | ---: | ---: | ---: | ---: |
-| HttpParamsDataset 학습 | 15,168 | 99.99% | 1 | 1 |
+| HttpParamsDataset 학습 | 15,168 | 100.00% | 0 | 0 |
 | HttpParamsDataset 검증 | 5,067 | 100.00% | 0 | 0 |
 | HttpParamsDataset 평가 | 5,084 | 100.00% | 0 | 0 |
-| Mendeley 외부 평가 | 400 | 99.50% | 1 | 1 |
+| Mendeley 외부 평가 | 400 | 52.00% | 192 | 0 |
 
 ![바이트 CNN 정확도와 전체 데이터 구성](reports/accuracy.png)
 
-HttpParamsDataset은 비슷한 요청을 템플릿 단위로 묶고, 정상 약 60%와 공격 약 40%의 비율이 각 분할에 가깝게 유지되도록 나눴습니다. Mendeley는 학습·검증·평가 분할마다 정상과 공격을 50%씩 사용했습니다. 위 학습 행은 저장 모델을 학습 분할에 다시 적용한 값입니다.
+HttpParamsDataset은 비슷한 요청을 템플릿 단위로 묶고, 정상 약 60%와 공격 약 40%의 비율이 각 분할에 가깝게 유지되도록 나눴습니다. 모델 학습, 가중치 선택, 판정 기준 선택에는 HttpParamsDataset만 사용했습니다. Mendeley는 정상 200건과 공격 200건을 외부 평가용으로 사용했습니다. 외부 평가에서는 공격 200건을 탐지했고, 정상 192건에 경고를 냈습니다. 위 학습 행은 저장 모델을 학습 분할에 다시 적용한 값입니다.
 
 ## 화면 열기
 
@@ -30,7 +30,7 @@ python app.py
 
 ## 학습과 평가
 
-[HttpParamsDataset](https://github.com/Morzeux/HttpParamsDataset)과 [Mendeley Normal & Malicious SQLi](https://data.mendeley.com/datasets/sx84kj3xfz/1)를 사용했습니다. 저장 모델의 성능을 같은 조건에서 재현하려면 아래 분할 CSV 세 개가 필요합니다. 파일 해시는 [모델 선택 기록](models/byte_selection.json)에 있습니다.
+[HttpParamsDataset](https://github.com/Morzeux/HttpParamsDataset)과 [Mendeley Normal & Malicious SQLi](https://data.mendeley.com/datasets/sx84kj3xfz/1)를 사용했습니다. 학습에는 HttpParamsDataset 분할 CSV 하나가 필요합니다. 전체 평가에서 Mendeley CSV와 평가 ID를 추가로 읽습니다. 학습 파일 해시는 [모델 선택 기록](models/byte_selection.json)에, 외부 평가 파일 해시는 [평가 기록](reports/evaluation.json)에 있습니다.
 
 | 파일 | 필요한 열 |
 | --- | --- |
@@ -38,7 +38,7 @@ python app.py
 | `Mendeley_SQLi.csv` | `id`, `text`, `label`, `group` |
 | `외부_분할.csv` | `id`, `split` |
 
-`label`의 0은 정상, 1은 공격입니다. HttpParamsDataset의 분할 값은 `train`, `validation`, `test`이고, Mendeley는 `train`, `validation`, `holdout`입니다. 분할 CSV는 별도로 준비합니다. [prepare_http.py](prepare_http.py)는 HttpParamsDataset 원본 CSV에서 개별 평가용 CSV를 만드는 데 쓸 수 있습니다.
+`label`의 0은 정상, 1은 공격입니다. HttpParamsDataset의 분할 값은 `train`, `validation`, `test`이고, Mendeley는 분할 CSV의 `holdout` ID만 외부 평가에 씁니다. 분할 CSV는 별도로 준비합니다. [prepare_http.py](prepare_http.py)는 HttpParamsDataset 원본 CSV에서 개별 평가용 CSV를 만드는 데 쓸 수 있습니다.
 
 ```bash
 python train.py --data-dir data --output-dir runs/byte_cnn
@@ -46,11 +46,11 @@ python evaluate.py --data-dir data
 python evaluate.py --data-dir data --artifact-dir runs/byte_cnn
 ```
 
-RMSprop, 학습률 0.003, 배치 크기 128로 6회 학습했습니다. 두 검증 분할의 평균 균형 정확도로 3회차 가중치를 선택했습니다. [학습 기록](reports/training_history.json)과 [평가 결과](reports/evaluation.json)에 수치가 있습니다.
+RMSprop, 학습률 0.003, 배치 크기 128로 6회 학습했습니다. HttpParamsDataset의 검증 균형 정확도와 공격 재현율로 5회차 가중치를 선택했습니다. [학습 기록](reports/training_history.json)과 [평가 결과](reports/evaluation.json)에 수치가 있습니다.
 
 ## 판정 기준
 
-HttpParamsDataset과 Mendeley의 검증 점수에서 0.000~1.000을 0.001 간격으로 비교했습니다. 두 데이터셋의 균형 정확도 평균이 가장 큰 값을 선택했습니다. 동률이면 공격 재현율 평균이 높은 값, 그 값도 같으면 0.5에 가까운 값을 선택했습니다.
+HttpParamsDataset 검증 5,067건에서 0.000~1.000을 0.001 간격으로 비교했습니다. 균형 정확도가 가장 큰 값을 선택했습니다. 동률이면 공격 재현율이 높은 값, 그 값도 같으면 0.5에 가까운 값을 선택했습니다.
 
 ```bash
 python evaluate.py --data-dir data --validation-csv runs/validation_scores.csv
@@ -62,15 +62,17 @@ python evaluate.py --data-dir data --scores-dir runs/scores
 
 ### 옵티마이저와 학습률 비교
 
-모든 조합에 원문 전체를 입력했습니다. Adam, RMSprop, SGD(모멘텀 0.9)와 학습률 0.001, 0.003, 0.01을 조합했습니다. 두 검증 분할의 평균 균형 정확도와 공격 재현율이 높은 순으로 고르고, 두 값이 같으면 검증 로그 손실이 더 낮은 조합을 선택했습니다.
+모든 조합에 원문 전체를 입력했습니다. Adam, RMSprop, SGD(모멘텀 0.9)와 학습률 0.001, 0.003, 0.01을 조합했습니다. HttpParamsDataset 검증 균형 정확도와 공격 재현율이 높은 순으로 고르고, 두 값이 같으면 검증 로그 손실이 더 낮은 조합을 선택했습니다.
 
 ![옵티마이저와 학습률 조합 9개의 외부 평가](reports/optimizer_settings.png)
 
-선택한 조합은 RMSprop, 학습률 0.003입니다. Mendeley 외부 평가에 공통 판정 기준 0.500을 적용했습니다. [비교 기록](reports/optimizer_settings.json)에 검증 선택 근거와 외부 결과가 있습니다.
+선택한 조합은 RMSprop, 학습률 0.003입니다. 학습 설정과 판정 기준을 확정한 뒤 Mendeley 외부 평가에 공통 판정 기준 0.500을 적용했습니다. [비교 기록](reports/optimizer_settings.json)에 검증 선택 근거와 외부 결과가 있습니다.
 
 ```bash
 python compare.py --data-dir data --output-dir runs/optimizer_settings
 ```
+
+외부 CSV가 다른 폴더에 있다면 `--external-data-dir`로 지정할 수 있습니다.
 
 ## 파일 구성
 

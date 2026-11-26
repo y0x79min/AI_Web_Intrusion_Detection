@@ -5,7 +5,8 @@ from pathlib import Path
 from tensorflow import keras
 from sklearn.metrics import confusion_matrix
 
-from dataset import DEFAULT_DATA_DIR, data_files, dataset, load_partitions, read_split
+from dataset import (DEFAULT_DATA_DIR, EXTERNAL_DATASET, EXTERNAL_SPLITS, HTTP_DATASET, dataset,
+                     load_external_holdout, load_internal_partitions, read_split)
 from detector import MODEL_DIR, MODEL_FILE, THRESHOLD, byte_scores, digest, load_byte_model, read_selection
 from tune_threshold import score_rows, write_scores
 
@@ -30,26 +31,29 @@ def measure(labels, values, threshold=THRESHOLD):
 
 def evaluate(data_dir, artifact_dir=MODEL_DIR, *, scores_dir=None, validation_csv=None):
     protocol = read_selection(artifact_dir)
-    actual_hashes = {path.name: digest(path) for path in data_files(data_dir)}
-    if actual_hashes != protocol['source_data_sha256']:
-        raise ValueError('The data files do not match this model’s evaluation split.')
-    internal, external = load_partitions(data_dir)
+    expected_hashes = protocol['source_data_sha256']
+    if digest(data_dir / HTTP_DATASET) != expected_hashes[HTTP_DATASET]:
+        raise ValueError('The HttpParamsDataset does not match this model.')
+    internal = load_internal_partitions(data_dir)
     model = load_byte_model(artifact_dir)
     max_bytes = protocol.get('max_bytes')
     threshold = protocol['threshold']
     if scores_dir is not None or validation_csv is not None:
-        validation = []
-        for source, rows in (('http', internal['validation']), ('mendeley', external['validation'])):
-            texts, labels = dataset(rows)
-            scores = byte_scores(model, texts, max_bytes=max_bytes)
-            validation.extend(score_rows(source, 'validation', rows, labels, scores))
+        rows = internal['validation']
+        texts, labels = dataset(rows)
+        scores = byte_scores(model, texts, max_bytes=max_bytes)
+        validation = score_rows('http', 'validation', rows, labels, scores)
         write_scores(validation_csv or scores_dir / 'validation_scores.csv', validation, threshold)
         if validation_csv is not None:
             return None
 
+    external_hashes = {name: digest(data_dir / name) for name in (EXTERNAL_DATASET, EXTERNAL_SPLITS)}
+    for name, checksum in external_hashes.items():
+        if name in expected_hashes and checksum != expected_hashes[name]:
+            raise ValueError('The external data files do not match this archived model.')
     evaluation_rows = []
     splits = {'train': internal['train'], 'validation': internal['validation'],
-              'test': internal['test'], 'external_test': external['holdout']}
+              'test': internal['test'], 'external_test': load_external_holdout(data_dir)}
     results = {}
     for name, rows in splits.items():
         texts, labels = dataset(rows)
@@ -62,7 +66,7 @@ def evaluate(data_dir, artifact_dir=MODEL_DIR, *, scores_dir=None, validation_cs
         write_scores(scores_dir / 'test_scores.csv', evaluation_rows, threshold)
     return {
         'model': MODEL_FILE, 'model_sha256': protocol['model_sha256'],
-        'threshold': threshold, 'results': results,
+        'threshold': threshold, 'results': results, 'external_data_sha256': external_hashes,
     }
 
 

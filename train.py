@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from dataset import DEFAULT_DATA_DIR, data_files, dataset, load_partitions
+from dataset import DEFAULT_DATA_DIR, HTTP_DATASET, dataset, load_internal_partitions
 from detector import MODEL_FILE, SELECTION_FILE, THRESHOLD, byte_scores, digest, encode_bytes
 from evaluate import measure, save_json
 from tune_threshold import select_threshold
@@ -47,10 +47,11 @@ def fit(data_dir, output_dir, *, learning_rate=LEARNING_RATE, optimizer=OPTIMIZE
     for artifact in (path, selected, output_dir / 'byte_history.json'):
         if artifact.exists():
             raise FileExistsError(f'Choose an empty training output folder: {artifact}')
-    internal, external = load_partitions(data_dir)
-    train_text, train_labels = dataset(internal['train'] + external['train'])
-    validation = {'http': dataset(internal['validation']), 'mendeley': dataset(external['validation'])}
-    source_hashes = {path.name: digest(path) for path in data_files(data_dir)}
+    source = data_dir / HTTP_DATASET
+    source_hash = digest(source)
+    internal = load_internal_partitions(data_dir)
+    train_text, train_labels = dataset(internal['train'])
+    validation_text, validation_labels = dataset(internal['validation'])
 
     keras.utils.set_random_seed(SEED)
     rng = np.random.default_rng(SEED)
@@ -59,42 +60,36 @@ def fit(data_dir, output_dir, *, learning_rate=LEARNING_RATE, optimizer=OPTIMIZE
     best_rank = None
     best_weights = None
     best_record = None
-    original_n = len(internal['train'])
-    external_draws = original_n // 4
     for epoch in range(1, EPOCHS + 1):
-        ext_ids = rng.choice(np.arange(original_n, len(train_text)), size=external_draws, replace=True)
-        order = rng.permutation(np.concatenate((np.arange(original_n), ext_ids)))
+        order = rng.permutation(len(train_text))
         model.reset_metrics()
         for start in range(0, len(order), BATCH_SIZE):
             batch = order[start:start + BATCH_SIZE]
             features = encode_bytes([train_text[i] for i in batch], max_bytes)
             loss = model.train_on_batch(features, train_labels[batch])
 
-        metrics = {name: measure(labels, byte_scores(model, texts, max_bytes=max_bytes))
-                   for name, (texts, labels) in validation.items()}
-        rank = (float(np.mean([row['balanced_accuracy'] for row in metrics.values()])),
-                min(row['recall'] for row in metrics.values()))
-        item = {'epoch': epoch, 'loss': float(loss), 'validation': metrics, 'selection_score': rank[0]}
+        metrics = measure(validation_labels, byte_scores(model, validation_text, max_bytes=max_bytes))
+        rank = (metrics['balanced_accuracy'], metrics['recall'])
+        item = {'epoch': epoch, 'loss': float(loss), 'validation': {'http': metrics}, 'selection_score': rank[0]}
         history.append(item)
         if best_rank is None or rank > best_rank:
             best_rank = rank
             best_weights = model.get_weights()
             best_record = item
         print(f'Epoch {epoch}: loss={float(loss):.4f} '
-              f'best mean validation balanced accuracy={best_rank[0]:.4f}', flush=True)
+              f'best validation balanced accuracy={best_rank[0]:.4f}', flush=True)
 
-    for name, checksum in source_hashes.items():
-        if digest(data_dir / name) != checksum:
-            raise ValueError('A data source changed during training.')
+    if digest(source) != source_hash:
+        raise ValueError('The training data changed during training.')
     model.set_weights(best_weights)
     model.save(path, include_optimizer=False)
     reload = keras.models.load_model(path, compile=False)
-    texts = validation['http'][0][:32]
+    texts = validation_text[:32]
     np.testing.assert_allclose(byte_scores(model, texts, max_bytes=max_bytes),
                                byte_scores(reload, texts, max_bytes=max_bytes), atol=1e-7)
+    validation_scores = byte_scores(reload, validation_text, max_bytes=max_bytes)
     threshold_report = select_threshold({
-        name: list(zip(map(float, byte_scores(reload, texts, max_bytes=max_bytes)), map(int, labels), strict=True))
-        for name, (texts, labels) in validation.items()
+        'http': list(zip(map(float, validation_scores), map(int, validation_labels), strict=True))
     })
     threshold = threshold_report['selected']['threshold']
     save_json(output_dir / 'threshold_selection.json', threshold_report)
@@ -102,14 +97,13 @@ def fit(data_dir, output_dir, *, learning_rate=LEARNING_RATE, optimizer=OPTIMIZE
     save_json(selected, {
         **best_record, 'frozen_utc': datetime.now(timezone.utc).isoformat(),
         'model': path.name, 'model_sha256': digest(path),
-        'source_data_sha256': source_hashes,
+        'source_data_sha256': {HTTP_DATASET: source_hash},
         'threshold': threshold, 'checkpoint_threshold': THRESHOLD,
-        'threshold_from': 'validation_mean_balanced_accuracy', 'seed': SEED, 'epoch_budget': EPOCHS,
+        'threshold_from': 'http_validation_balanced_accuracy', 'seed': SEED, 'epoch_budget': EPOCHS,
         'optimizer': optimizer, 'optimizer_config': model.optimizer.get_config(),
         'learning_rate': learning_rate, 'batch_size': BATCH_SIZE, 'max_bytes': max_bytes,
-        'train_http_n': original_n, 'train_mendeley_n': len(external['train']),
-        'mendeley_presentations_per_epoch': external_draws,
-        'selection': 'Mean validation balanced accuracy; ties prefer higher minimum recall, then the earlier epoch.',
+        'train_http_n': len(train_text),
+        'selection': 'HttpParamsDataset validation balanced accuracy; ties prefer higher attack recall, then the earlier epoch.',
     })
     print(f'Selected epoch {best_record["epoch"]} using validation.', flush=True)
 

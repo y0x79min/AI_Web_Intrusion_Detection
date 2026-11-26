@@ -22,11 +22,9 @@ def read_split(path):
 
 
 DEFAULT_DATA_DIR = Path(__file__).resolve().parent / 'data'
-SOURCE_NAMES = ('HttpParamsDataset.csv', 'Mendeley_SQLi.csv', '외부_분할.csv')
-
-
-def data_files(data_dir):
-    return tuple(data_dir / name for name in SOURCE_NAMES)
+HTTP_DATASET = 'HttpParamsDataset.csv'
+EXTERNAL_DATASET = 'Mendeley_SQLi.csv'
+EXTERNAL_SPLITS = '외부_분할.csv'
 
 
 def records(path):
@@ -34,23 +32,29 @@ def records(path):
         return list(csv.DictReader(stream))
 
 
-def load_partitions(data_dir):
-    http, mendeley, split = data_files(data_dir)
+def separate_groups(partitions):
+    seen = set()
+    for rows in partitions:
+        groups = {row['group'] for row in rows}
+        if seen & groups:
+            raise ValueError('Template groups overlap between data splits.')
+        seen.update(groups)
+
+
+def load_internal_partitions(data_dir):
     internal = defaultdict(list)
-    for row in records(http):
+    for row in records(data_dir / HTTP_DATASET):
         internal[row['split']].append(row)
-    external = defaultdict(list)
-    split_by_id = {row['id']: row['split'] for row in records(split)}
-    for row in records(mendeley):
-        external[split_by_id[row['id']]].append(row)
-    for dataset in (internal, external):
-        seen = set()
-        for rows in dataset.values():
-            groups = {row['group'] for row in rows}
-            if seen & groups:
-                raise ValueError('Template groups overlap between data splits.')
-            seen.update(groups)
-    return internal, external
+    separate_groups(internal.values())
+    return internal
+
+
+def load_external_holdout(data_dir):
+    ids = {row['id'] for row in records(data_dir / EXTERNAL_SPLITS) if row['split'] == 'holdout'}
+    rows = [row for row in records(data_dir / EXTERNAL_DATASET) if row['id'] in ids]
+    if not ids or len(rows) != len(ids) or {row['id'] for row in rows} != ids:
+        raise ValueError('The external evaluation IDs do not match the dataset.')
+    return rows
 
 
 def dataset(rows):

@@ -1,6 +1,6 @@
 {
-  "epoch": 3,
-  "loss": 0.0002828673750627786,
+  "epoch": 5,
+  "loss": 6.52692733638105e-06,
   "validation": {
     "http": {
       "n": 5067,
@@ -13,32 +13,18 @@
       "tn": 3025,
       "fp": 0,
       "fn": 0
-    },
-    "mendeley": {
-      "n": 400,
-      "accuracy": 0.9875,
-      "f1": 0.9875930521091811,
-      "recall": 0.995,
-      "specificity": 0.98,
-      "balanced_accuracy": 0.9875,
-      "tp": 199,
-      "tn": 196,
-      "fp": 4,
-      "fn": 1
     }
   },
-  "selection_score": 0.99375,
-  "frozen_utc": "2026-11-25T14:10:21.789044+00:00",
+  "selection_score": 1.0,
+  "frozen_utc": "2026-11-26T08:01:16.890880+00:00",
   "model": "byte_cnn.h5",
-  "model_sha256": "05ac5f306e60a5fc0eb467b42036390d3b0809e386bcd50b54c5b5f6e71679c6",
+  "model_sha256": "ccc66397e5b4c4cd1c99f27a75d46f6eea42c2ec81e8503a103197c0106fe5a2",
   "source_data_sha256": {
-    "HttpParamsDataset.csv": "c7f19e88baf2bf49a8ae6e7c86eabf369b9e05d3cb007d237824b31822320654",
-    "Mendeley_SQLi.csv": "6e69a70a6fcd351d3d77db8f3901e39e2cffffbed2b02de817652564310ac848",
-    "외부_분할.csv": "0ffd019b0ed0294815fb7ed3660a12e07002d901873c61f2b47d0335da3c0a63"
+    "HttpParamsDataset.csv": "c7f19e88baf2bf49a8ae6e7c86eabf369b9e05d3cb007d237824b31822320654"
   },
   "threshold": 0.5,
   "checkpoint_threshold": 0.5,
-  "threshold_from": "validation_mean_balanced_accuracy",
+  "threshold_from": "http_validation_balanced_accuracy",
   "seed": 42,
   "epoch_budget": 6,
   "optimizer": "rmsprop",
@@ -63,8 +49,6 @@
   "batch_size": 128,
   "max_bytes": null,
   "train_http_n": 15168,
-  "train_mendeley_n": 1200,
-  "mendeley_presentations_per_epoch": 3792,
-  "selection": "Mean validation balanced accuracy; ties prefer higher minimum recall, then the earlier epoch.",
-  "comparison_selection_rule": "At cutoff 0.5, maximize mean validation balanced accuracy, then mean recall, then minimize mean log loss."
+  "selection": "HttpParamsDataset validation balanced accuracy; ties prefer higher attack recall, then the earlier epoch.",
+  "comparison_selection_rule": "At cutoff 0.5, maximize HttpParamsDataset validation balanced accuracy, then attack recall, then minimize log loss."
 }

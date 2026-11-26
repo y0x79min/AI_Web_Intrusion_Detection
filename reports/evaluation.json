@@ -1,19 +1,19 @@
 {
   "model": "byte_cnn.h5",
-  "model_sha256": "05ac5f306e60a5fc0eb467b42036390d3b0809e386bcd50b54c5b5f6e71679c6",
+  "model_sha256": "ccc66397e5b4c4cd1c99f27a75d46f6eea42c2ec81e8503a103197c0106fe5a2",
   "threshold": 0.5,
   "results": {
     "train": {
       "n": 15168,
-      "accuracy": 0.9998681434599156,
-      "f1": 0.9998339146321209,
-      "recall": 0.9998339146321209,
-      "specificity": 0.9998906745380999,
-      "balanced_accuracy": 0.9998622945851103,
-      "tp": 6020,
-      "tn": 9146,
-      "fp": 1,
-      "fn": 1
+      "accuracy": 1.0,
+      "f1": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0,
+      "balanced_accuracy": 1.0,
+      "tp": 6021,
+      "tn": 9147,
+      "fp": 0,
+      "fn": 0
     },
     "validation": {
       "n": 5067,
@@ -41,15 +41,19 @@
     },
     "external_test": {
       "n": 400,
-      "accuracy": 0.995,
-      "f1": 0.995,
-      "recall": 0.995,
-      "specificity": 0.995,
-      "balanced_accuracy": 0.995,
-      "tp": 199,
-      "tn": 199,
-      "fp": 1,
-      "fn": 1
+      "accuracy": 0.52,
+      "f1": 0.6756756756756757,
+      "recall": 1.0,
+      "specificity": 0.04,
+      "balanced_accuracy": 0.52,
+      "tp": 200,
+      "tn": 8,
+      "fp": 192,
+      "fn": 0
     }
+  },
+  "external_data_sha256": {
+    "Mendeley_SQLi.csv": "6e69a70a6fcd351d3d77db8f3901e39e2cffffbed2b02de817652564310ac848",
+    "외부_분할.csv": "0ffd019b0ed0294815fb7ed3660a12e07002d901873c61f2b47d0335da3c0a63"
   }
 }
